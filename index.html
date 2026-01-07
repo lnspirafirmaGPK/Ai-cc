@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>AI Chat with Reasoning (MVP)</title>
+<style>
+body { font-family: sans-serif; background:#111; color:#eee; margin:0; padding:0 }
+#chat { padding:20px; height:80vh; overflow:auto }
+#input { display:flex; padding:10px; background:#222 }
+input { flex:1; padding:10px; font-size:16px; background: #333; color: white; border: none; }
+button { padding:10px 20px; font-size:16px; cursor: pointer; background: #4caf50; color: white; border: none; }
+button:disabled { background: #555; }
+.msg { margin-bottom:10px; padding: 5px 10px; border-radius: 5px; }
+.ai { color:#6cf; background: #222; }
+.human { color:#fff; background: #333; text-align: right; }
+.reason { font-size:12px; color:#aaa; margin-left: 10px; }
+.error { color: #f44; }
+</style>
+</head>
+<body>
+<div id="chat"></div>
+<div id="input">
+<input id="text" placeholder="พิมพ์ถาม AI..." onkeydown="if(event.key==='Enter') send()" />
+<button onclick="send()" id="sendBtn">ส่ง</button>
+</div>
+<script>
+async function send(){
+  const t = document.getElementById('text');
+  const btn = document.getElementById('sendBtn');
+  const text = t.value;
+  if(!text) return;
+
+  add('human', text);
+  t.value='';
+  t.disabled = true;
+  btn.disabled = true;
+
+  try {
+    const response = await fetch("http://localhost:8000/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    add('ai', data.reply);
+
+  } catch (e) {
+    console.error(e);
+    add('error', 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + e.message);
+  } finally {
+    t.disabled = false;
+    btn.disabled = false;
+    t.focus();
+  }
+}
+
+function add(type,text){
+  const d=document.createElement('div');
+  d.className='msg '+type;
+  d.textContent=text;
+  document.getElementById('chat').appendChild(d);
+  document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+}
+</script>
+</body>
+</html>
