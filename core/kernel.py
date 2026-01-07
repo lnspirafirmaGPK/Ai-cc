@@ -1,15 +1,11 @@
+# lnspirafirmagpk/ai-cc/Ai-cc-main/core/kernel.py
+from core.wisdom.vault import WisdomVault
+
 class Kernel:
-    """
-    Orolar Kernel (Silent Core)
-    The heart of the system.
-    """
     def __init__(self):
-        pass
+        self.vault = WisdomVault()
 
     def process_input(self, user_input):
-        # Placeholder for governance logic
-        return user_input
-
-    def process_output(self, model_output):
-        # Placeholder for safety checks
-        return model_output
+        # ตรรกะการใช้เหตุผล (Reasoning) ของคุณเอง
+        context = self.vault.retrieve(user_input)
+        return context
