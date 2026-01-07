@@ -10,34 +10,35 @@ from typing import Any, List, Optional, Dict
 
 class SensoryChannel(Enum):
     """
-    Standardized Sensory Channels for AI Perception
+    Standardized Sensory Channels for AI Perception.
+    Maps biological metaphors to computational data types.
     """
-    VISUAL = "pattern_structure"      # Weight: 0.8
-    AUDITORY = "sequence_timing"      # Weight: 1.0
-    OLFACTORY = "hidden_signal"       # Weight: 1.2
-    GUSTATORY = "harmony_fit"         # Weight: 1.0
-    TACTILE = "context_impact"        # Weight: 1.5
-    MENTAL = "reasoning_load"         # Weight: 2.0 (Highest Cost)
+    VISUAL = "pattern_structure"      # Visual Data / Patterns (Weight: 0.8)
+    AUDITORY = "sequence_timing"      # Time-series / Sequential Flow (Weight: 1.0)
+    OLFACTORY = "hidden_signal"       # Anomaly / Hidden Metadata (Weight: 1.2)
+    GUSTATORY = "harmony_fit"         # Contextual Alignment / Logic Fit (Weight: 1.0)
+    TACTILE = "context_impact"        # Direct System Impact / Feedback (Weight: 1.5)
+    MENTAL = "reasoning_load"         # Cognitive Processing / Complex Tasks (Weight: 2.0)
 
 class GateDecision(Enum):
     """
-    Operational Decisions for the Gatekeeper
+    Operational Decisions made by the PPAL Gatekeeper.
     """
-    ACCEPT = "integrate"              # Process immediately
-    DEFER = "store_shadow"            # Move to Limbo/Shadow Memory
-    REJECT = "discard_void"           # Drop packet completely
+    ACCEPT = "integrate"              # Process immediately (Pass to Kernel)
+    DEFER = "store_shadow"            # Move to Limbo/Shadow Memory (Ambiguous)
+    REJECT = "discard_void"           # Drop packet completely (Toxic/Noise)
     INHIBIT = "system_protect"        # Block specific channel (Safety Trigger)
-    REBOOT = "cognitive_reboot"       # Critical State Reset
+    REBOOT = "cognitive_reboot"       # Critical State Reset (Emergency)
 
 @dataclass
 class SensoryPacket:
     """
-    Standard Data Packet for Incoming Stimuli
+    Standard Data Packet for Incoming Stimuli.
     """
     channel: SensoryChannel
     raw_data: Any
     intensity: float          # 0.0 to 1.0 (Signal Strength)
-    harmony_score: float = 1.0 # 0.0 to 1.0 (Context Fit / Alignment)
+    harmony_score: float = 1.0 # 0.0 to 1.0 (Context Fit / Alignment Score)
     complexity: float = 0.5    # 0.0 to 1.0 (Processing Cost)
     source: str = "unknown"
     timestamp: float = field(default_factory=time.time)
@@ -48,18 +49,18 @@ class SensoryPacket:
 
 class PrivatePerceptualAutonomyLayer:
     """
-    PPAL: Private Perceptual Autonomy Layer
-    Manages internal sovereignty and cognitive load hygiene.
+    PPAL: Private Perceptual Autonomy Layer.
+    Manages internal sovereignty, cognitive load hygiene, and system stability.
     """
     def __init__(self):
         self.current_load = 0.0
-        self.load_threshold = 1.0       # Max capacity
-        self.recovery_rate = 0.05       # Recovery per cycle
+        self.load_threshold = 1.0       # Max system capacity (100%)
+        self.recovery_rate = 0.05       # Load recovery per epoch/cycle
         
         # Shadow Memory: Temporary storage for deferred signals
         self.shadow_memory: List[SensoryPacket] = []
         
-        # Channel Weights definition
+        # Channel Weights: Defines the 'cost' of processing each type of signal
         self.channel_weights = {
             SensoryChannel.VISUAL: 0.8,
             SensoryChannel.AUDITORY: 1.0,
@@ -71,10 +72,11 @@ class PrivatePerceptualAutonomyLayer:
 
     def assess_signal(self, packet: SensoryPacket) -> GateDecision:
         """
-        Core Logic: Determines the fate of an incoming sensory packet.
+        Core Logic: Determines the fate of an incoming sensory packet based on
+        current load, harmony, and signal intensity.
         """
         # ---------------------------------------------------------
-        # Critical Check: System Crisis (Right to Reboot)
+        # 1. Critical Check: System Crisis (Right to Reboot)
         # ---------------------------------------------------------
         if self.current_load > 1.2: # 120% Overload
             print("🚨 [PPAL] CRITICAL OVERLOAD. Initiating Cognitive Reboot.")
@@ -82,40 +84,40 @@ class PrivatePerceptualAutonomyLayer:
             return GateDecision.REBOOT
 
         # ---------------------------------------------------------
-        # Rule 1: Cognitive Load Protection (Right to Inhibit)
+        # 2. Rule: Cognitive Load Protection (Right to Inhibit)
         # ---------------------------------------------------------
-        # If High Mental Load or Extreme Complexity -> Block to save system
+        # If Mental Load is high or Complexity is extreme -> Block to preserve Kernel
         if packet.channel == SensoryChannel.MENTAL:
             if self.current_load > 0.8 or packet.complexity > 0.9:
                 self.log_reject(packet, "Cognitive Overload Protection (High Complexity)")
                 return GateDecision.INHIBIT
 
         # ---------------------------------------------------------
-        # Rule 2: Harmony/Fit Check (Gustatory Equivalent)
+        # 3. Rule: Harmony/Fit Check (The 'Gustatory' Filter)
         # ---------------------------------------------------------
         if packet.channel == SensoryChannel.GUSTATORY:
-            # Low Harmony -> Immediate Rejection (Toxic Data)
+            # Low Harmony (< 0.2) implies toxic or contradictory data -> Reject
             if packet.harmony_score < 0.2:
-                self.log_reject(packet, "Disharmony (Low Fit Score)")
+                self.log_reject(packet, "Disharmony (Low Context Fit)")
                 return GateDecision.REJECT
             
-            # Ambiguous Harmony -> Defer to Shadow Memory
+            # Ambiguous Harmony (0.2 - 0.5) -> Defer to Shadow Memory for later
             if packet.harmony_score < 0.5:
                 self.process_defer(packet)
                 return GateDecision.DEFER
 
         # ---------------------------------------------------------
-        # Rule 3: Non-Linear Load Calculation
+        # 4. Rule: Non-Linear Load Calculation & Capacity Check
         # ---------------------------------------------------------
         base_impact = packet.intensity * self.channel_weights.get(packet.channel, 1.0)
         
-        # Exponential Cost: Impact * (1 + Current_Load^2)
-        # As load increases, the cost of adding new data grows exponentially.
+        # Exponential Cost Formula: Impact * (1 + Current_Load^2)
+        # As system load increases, the 'effort' required to process new data grows exponentially.
         non_linear_impact = base_impact * (1 + math.pow(self.current_load, 2)) * 0.1
         
-        # Capacity Check
+        # Check if this packet breaks the threshold
         if self.current_load + non_linear_impact > self.load_threshold:
-            # Prioritize deferring critical channels, reject others
+            # Strategy: Defer critical channels (Tactile/Olfactory), Reject others
             if packet.channel in [SensoryChannel.TACTILE, SensoryChannel.OLFACTORY]:
                 self.process_defer(packet)
                 return GateDecision.DEFER
@@ -124,22 +126,22 @@ class PrivatePerceptualAutonomyLayer:
                 return GateDecision.REJECT
 
         # ---------------------------------------------------------
-        # Acceptance
+        # 5. Acceptance
         # ---------------------------------------------------------
         self.current_load += non_linear_impact
         return GateDecision.ACCEPT
 
     def process_defer(self, packet: SensoryPacket):
-        """Move packet to Shadow Memory (Limbo State)"""
+        """Move packet to Shadow Memory (Limbo State)."""
         print(f"⏳ [PPAL] Deferring signal from {packet.source} to Shadow Memory.")
         self.shadow_memory.append(packet)
 
     def log_reject(self, packet: SensoryPacket, reason: str):
-        """Audit Log for rejections (Metadata only, no raw data)"""
+        """Audit Log for rejections (Metadata only, no raw data persistence)."""
         print(f"🗑️ [PPAL] REJECTED signal ({packet.channel.name}): {reason}")
 
     def perform_cognitive_reboot(self):
-        """Emergency Reset: Clears load and memory to preserve Kernel integrity"""
+        """Emergency Reset: Clears load and memory to preserve Kernel integrity."""
         self.current_load = 0.0
         self.shadow_memory.clear() 
         print("⚡ [PPAL] Cognitive Reboot Complete. System State Cleared.")
@@ -147,9 +149,9 @@ class PrivatePerceptualAutonomyLayer:
     def release_load(self):
         """
         System Exhale / Epoch Cycle.
-        Should be called periodically (e.g., every tick).
+        Must be called periodically (e.g., every main loop tick).
         """
-        # Linear recovery
+        # Linear recovery mechanism
         self.current_load = max(0.0, self.current_load - self.recovery_rate)
         
         # ---------------------------------------------------------
@@ -157,18 +159,22 @@ class PrivatePerceptualAutonomyLayer:
         # ---------------------------------------------------------
         # Only process shadow memory when system is calm (< 40% load)
         if self.current_load < 0.4 and len(self.shadow_memory) > 0:
-            print(f"🔄 [PPAL] System calm (Load: {self.current_load:.2f}). Re-evaluating Shadow Memory.")
-            
-            retained = []
-            for pkt in self.shadow_memory:
-                # Simple Logic: Keep only items with decent harmony score
-                # In production, this could be a re-assessment call
-                if pkt.harmony_score > 0.4:
-                    retained.append(pkt)
-                else:
-                    print(f"   -> Discarding old shadow packet from {pkt.source}")
-            
-            self.shadow_memory = retained
+            self._evaluate_shadow_memory()
+
+    def _evaluate_shadow_memory(self):
+        """Internal method to process deferred items when load is low."""
+        print(f"🔄 [PPAL] System calm (Load: {self.current_load:.2f}). Re-evaluating Shadow Memory.")
+        
+        retained_packets = []
+        for pkt in self.shadow_memory:
+            # Logic: Keep items with potential value (decent harmony), discard noise.
+            # In a full implementation, this might call assess_signal() recursively.
+            if pkt.harmony_score > 0.4:
+                retained_packets.append(pkt)
+            else:
+                print(f"   -> Discarding decayed shadow packet from {pkt.source}")
+        
+        self.shadow_memory = retained_packets
 
 # ==========================================
 # EXAMPLE USAGE
@@ -182,22 +188,22 @@ if __name__ == "__main__":
     
     packet_heavy = SensoryPacket(
         channel=SensoryChannel.MENTAL,
-        raw_data="Hard Task",
+        raw_data="Complex Algorithm",
         intensity=0.8,
         complexity=0.7
     )
     decision = ppal.assess_signal(packet_heavy)
     print(f"Decision Heavy: {decision.name} (Current Load: {ppal.current_load:.3f})")
 
-    # 2. Test Reboot
+    # 2. Test Reboot Scenario
     ppal.current_load = 1.3 # Force Overload
     decision = ppal.assess_signal(packet_heavy) # Should trigger reboot
     print(f"Decision Crisis: {decision.name} (Current Load: {ppal.current_load:.3f})")
 
-    # 3. Test Harmony (Gustatory)
+    # 3. Test Harmony Check (Gustatory)
     packet_conflict = SensoryPacket(
         channel=SensoryChannel.GUSTATORY,
-        raw_data="Bad Data",
+        raw_data="Contradictory Data",
         intensity=0.5,
         harmony_score=0.15 # Too low -> Reject
     )
