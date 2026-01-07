@@ -1,11 +1,14 @@
-INFO:     Started server process [10949]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-Warning: OPENAI_API_KEY not found or is placeholder. Using Mock Provider.
-INFO:     127.0.0.1:43356 - "OPTIONS /chat HTTP/1.1" 200 OK
-INFO:     127.0.0.1:43364 - "POST /chat HTTP/1.1" 200 OK
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [10949]
+# platform/api/server.py
+from core.kernel import Kernel
+
+# สร้าง Provider ที่เชื่อมกับสมองที่คุณออกแบบเอง
+class OrolarReasoningProvider:
+    def __init__(self):
+        self.kernel = Kernel()
+
+    async def reason(self, prompt: str) -> str:
+        # ส่งไปให้ Kernel ประมวลผลผ่าน WisdomVault
+        return self.kernel.process_input(prompt)
+
+# บังคับให้ระบบใช้ Provider ของเราเองเสมอ
+reasoning_provider = OrolarReasoningProvider()
