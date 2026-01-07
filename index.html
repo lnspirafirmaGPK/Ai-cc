@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-        
+
         body {
             margin: 0;
             background-color: #050505;
@@ -22,10 +22,9 @@
             top: 0;
             left: 0;
             z-index: 0;
-            filter: blur(1px) contrast(1.1);
+            filter: blur(2px) contrast(1.2);
         }
 
-        /* UI Structure */
         .ui-wrapper {
             position: relative;
             z-index: 10;
@@ -35,7 +34,6 @@
             background: radial-gradient(circle at center, transparent 0%, rgba(5, 5, 5, 0.8) 100%);
         }
 
-        /* Glassmorphism */
         .glass-panel {
             background: rgba(15, 15, 15, 0.7);
             backdrop-filter: blur(16px);
@@ -43,7 +41,6 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* Chat Area */
         #chat-container {
             flex: 1;
             overflow-y: auto;
@@ -57,7 +54,6 @@
         #chat-container::-webkit-scrollbar { width: 4px; }
         #chat-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
 
-        /* Message Styles */
         .msg {
             max-width: 85%;
             padding: 14px 20px;
@@ -107,7 +103,6 @@
             font-size: 13px;
         }
 
-        /* Input Styles */
         .input-box-area {
             padding: 20px 24px 40px 24px;
         }
@@ -127,30 +122,44 @@
         }
         @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60% { content: '...'; } 80%, 100% { content: ''; } }
 
+        /* Mood indicator */
+        .mood-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            color: #666;
+            transition: all 0.5s ease;
+        }
+
+        .mood-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: all 0.5s ease;
+        }
+
     </style>
 </head>
 <body>
 
-    <!-- กราฟิกพื้นหลัง (Genesis Engine) -->
     <canvas id="neural-shader"></canvas>
 
     <div class="ui-wrapper">
-        
-        <!-- Header: ส่วนหัวระบบ -->
+
         <header class="glass-panel mx-4 mt-4 p-4 rounded-2xl flex justify-between items-center">
             <div class="flex flex-col">
                 <h1 class="text-xl font-bold tracking-[0.2em] text-white">OROLAR <span class="text-blue-500 font-light">AI</span></h1>
                 <span class="text-[10px] text-blue-400/50 uppercase tracking-widest font-mono">Genesis Engine v4.0 // Eric's Protocol</span>
             </div>
             <div class="hidden md:flex gap-6 items-center">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></div>
-                    <span class="text-[10px] text-gray-400 font-mono">CORE_STABLE</span>
+                <div class="mood-indicator" id="moodIndicator">
+                    <div class="mood-dot" id="moodDot"></div>
+                    <span id="moodText">IDLE</span>
                 </div>
             </div>
         </header>
 
-        <!-- Chat History: พื้นที่แสดงข้อความ -->
         <main id="chat-container">
             <div class="msg ai">
                 [SYSTEM]: การเชื่อมต่อเสถียร... <br>
@@ -158,7 +167,6 @@
             </div>
         </main>
 
-        <!-- Input: ส่วนพิมพ์ข้อความ -->
         <footer class="input-box-area">
             <div class="glass-panel main-input rounded-full p-2 flex items-center gap-2 group max-w-4xl mx-auto">
                 <input id="userInput" type="text" 
@@ -166,7 +174,7 @@
                     placeholder="ป้อนคำสั่งหรือคำถามเพื่อเริ่มต้นการสนทนา..." 
                     autocomplete="off"
                     onkeydown="if(event.key==='Enter') send()">
-                
+
                 <button onclick="send()" id="sendBtn" 
                     class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg active:scale-95">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -180,62 +188,98 @@
     </div>
 
     <script>
-        // --- 1. ระบบสื่อสาร (Chat & Eric's Protocol Logic) ---
+        // --- MOOD SYSTEM ---
+        const MOODS = {
+            idle: { color: [220, 220, 220], intensity: 0.3, name: 'IDLE', label: 'พร้อมใช้งาน' },
+            relaxed: { color: [34, 197, 94], intensity: 0.4, name: 'RELAXED', label: 'ผ่อนคลาย' },
+            happy: { color: [125, 211, 252], intensity: 0.5, name: 'HAPPY', label: 'อารมณ์ดี' },
+            thinking: { color: [37, 99, 235], intensity: 0.7, name: 'THINKING', label: 'กำลังคิด' },
+            concerned: { color: [239, 68, 68], intensity: 0.6, name: 'CONCERNED', label: 'ไม่โอเค' },
+            confused: { color: [161, 98, 7], intensity: 0.5, name: 'CONFUSED', label: 'ไม่เข้าใจ' }
+        };
+
+        // --- CHAT SYSTEM ---
         const container = document.getElementById('chat-container');
         const input = document.getElementById('userInput');
         const btn = document.getElementById('sendBtn');
+        const moodDot = document.getElementById('moodDot');
+        const moodText = document.getElementById('moodText');
 
-        // สำคัญ: เปลี่ยน URL นี้เมื่อคุณรันบน Render
+        // เปลี่ยน URL ตามที่คุณต้องการ
         const BACKEND_URL = "http://localhost:8000/chat"; 
+
+        function updateMoodUI(mood) {
+            const m = MOODS[mood];
+            moodDot.style.backgroundColor = `rgb(${m.color[0]}, ${m.color[1]}, ${m.color[2]})`;
+            moodDot.style.boxShadow = `0 0 12px rgba(${m.color[0]}, ${m.color[1]}, ${m.color[2]}, 0.6)`;
+            moodText.textContent = m.name;
+            moodText.style.color = `rgb(${m.color[0]}, ${m.color[1]}, ${m.color[2]})`;
+        }
 
         async function send() {
             const text = input.value.trim();
             if (!text) return;
 
-            // 1. เพิ่มข้อความฝั่งผู้ใช้
             addMessage('human', text);
             input.value = '';
             input.disabled = true;
             btn.disabled = true;
 
-            // 2. เอฟเฟกต์ Visual: เริ่มการคิด (สีม่วง)
-            visualEngine.setMode('thinking', [147, 51, 234]);
+            // เริ่มคิด
+            visualEngine.setMood('thinking');
+            updateMoodUI('thinking');
 
-            const loadingId = addMessage('ai', 'แปรธาตุข้อมูลในภูมิปัญญา (Transmuting Wisdom)', true);
+            const loadingId = addMessage('ai', 'กำลังประมวลผล', true);
 
             try {
-                const response = await fetch(BACKEND_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: text })
-                });
-
-                if (!response.ok) throw new Error(`สถานะการเชื่อมต่อผิดพลาด: ${response.status}`);
+                // จำลองการเรียก API (ใช้ตัวอย่างนี้ถ้าไม่มี backend)
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                const data = await response.json();
-                removeMessage(loadingId);
+                // ตัวอย่างการกำหนดอารมณ์ตามคำถาม
+                let mood = 'happy';
+                let reply = 'ขอบคุณสำหรับคำถามครับ! ผมพร้อมช่วยเหลือคุณเสมอ';
 
-                // 3. ตรวจสอบประเภทคำตอบ (แปรธาตุผลึกปัญญาสำเร็จหรือไม่)
-                if (data.reply.includes("⛔") || data.reply.includes("Violation")) {
-                    addMessage('error', data.reply);
-                    visualEngine.setMode('error', [239, 68, 68]);
-                } else {
-                    addMessage('ai', data.reply);
-                    // เอฟเฟกต์ Visual: สำเร็จ (สีทอง)
-                    visualEngine.setMode('success', [234, 179, 8]);
+                // วิเคราะห์คำถามอย่างง่าย
+                const lowerText = text.toLowerCase();
+                
+                if (lowerText.includes('สบายดี') || lowerText.includes('hello')) {
+                    mood = 'relaxed';
+                    reply = 'สบายดีครับ! วันนี้เป็นอย่างไรบ้าง?';
+                } else if (lowerText.includes('ขอบคุณ') || lowerText.includes('เยี่ยม')) {
+                    mood = 'happy';
+                    reply = 'ยินดีครับ! มีอะไรให้ช่วยอีกไหม?';
+                } else if (lowerText.includes('คิด') || lowerText.includes('วิเคราะห์')) {
+                    mood = 'thinking';
+                    reply = 'ให้ผมวิเคราะห์ให้นะครับ... เรื่องนี้ต้องใช้เวลาพิจารณา';
+                } else if (lowerText.includes('ไม่ดี') || lowerText.includes('แย่')) {
+                    mood = 'concerned';
+                    reply = 'ผมเข้าใจว่าคุณอาจกำลังประสบปัญหา มีอะไรให้ผมช่วยไหมครับ?';
+                } else if (lowerText.length < 3 || lowerText === 'อะไร' || lowerText === '???') {
+                    mood = 'confused';
+                    reply = 'ขออภัยครับ ผมไม่ค่อยเข้าใจคำถามนี้ ช่วยอธิบายเพิ่มเติมได้ไหม?';
                 }
+
+                removeMessage(loadingId);
+                addMessage('ai', reply);
+                visualEngine.setMood(mood);
+                updateMoodUI(mood);
+
+                // กลับสู่โหมด idle หลัง 4 วินาที
+                setTimeout(() => {
+                    visualEngine.setMood('idle');
+                    updateMoodUI('idle');
+                }, 4000);
 
             } catch (err) {
                 console.error(err);
                 removeMessage(loadingId);
-                addMessage('error', '⚡ ไม่สามารถเชื่อมต่อกับสมอง AI ได้: ' + err.message);
-                visualEngine.setMode('error', [239, 68, 68]);
+                addMessage('error', '⚡ เกิดข้อผิดพลาด: ' + err.message);
+                visualEngine.setMood('concerned');
+                updateMoodUI('concerned');
             } finally {
                 input.disabled = false;
                 btn.disabled = false;
                 input.focus();
-                // กลับสู่โหมดปกติหลังผ่านไป 3 วินาที
-                setTimeout(() => visualEngine.setMode('idle', [59, 130, 246]), 3000);
             }
         }
 
@@ -254,36 +298,40 @@
             if(el) el.remove();
         }
 
-        // --- 2. ระบบกราฟิก (Aetherium Genesis Engine) ---
-        class GenesisVisualizer {
+        // --- VISUAL ENGINE: AURA SYSTEM ---
+        class AuraVisualizer {
             constructor() {
                 this.canvas = document.getElementById('neural-shader');
                 this.ctx = this.canvas.getContext('2d');
                 this.particles = [];
-                this.attractor = { x: 0, y: 0 };
-                this.color = [59, 130, 246]; // สีเริ่มต้น: น้ำเงิน
-                this.speed = 1;
-                
+                this.currentMood = MOODS.idle;
+                this.targetMood = MOODS.idle;
+                this.transitionProgress = 1;
+
                 this.init();
                 window.addEventListener('resize', () => this.resize());
-                window.addEventListener('mousemove', (e) => {
-                    this.attractor.x = e.clientX;
-                    this.attractor.y = e.clientY;
-                });
             }
 
             init() {
                 this.resize();
-                this.attractor = { x: this.canvas.width/2, y: this.canvas.height/2 };
-                for (let i = 0; i < 120; i++) {
-                    this.particles.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
-                        vx: 0, vy: 0,
-                        size: Math.random() * 2 + 0.5
-                    });
+                // สร้าง particles ที่ลอยขึ้นจากด้านล่าง
+                for (let i = 0; i < 80; i++) {
+                    this.createParticle();
                 }
                 this.render();
+            }
+
+            createParticle() {
+                this.particles.push({
+                    x: Math.random() * this.canvas.width,
+                    y: this.canvas.height + Math.random() * 100,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: -0.5 - Math.random() * 1.5,
+                    size: Math.random() * 3 + 1,
+                    alpha: Math.random() * 0.5 + 0.3,
+                    wobble: Math.random() * Math.PI * 2,
+                    wobbleSpeed: 0.02 + Math.random() * 0.03
+                });
             }
 
             resize() {
@@ -291,56 +339,86 @@
                 this.canvas.height = window.innerHeight;
             }
 
-            setMode(mode, color) {
-                this.color = color;
-                this.speed = mode === 'thinking' ? 4 : (mode === 'error' ? 8 : 1);
+            setMood(moodKey) {
+                this.targetMood = MOODS[moodKey];
+                this.transitionProgress = 0;
+            }
+
+            interpolateColor(progress) {
+                const from = this.currentMood.color;
+                const to = this.targetMood.color;
+                return [
+                    Math.round(from[0] + (to[0] - from[0]) * progress),
+                    Math.round(from[1] + (to[1] - from[1]) * progress),
+                    Math.round(from[2] + (to[2] - from[2]) * progress)
+                ];
             }
 
             render() {
-                this.ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+                // Smooth transition
+                if (this.transitionProgress < 1) {
+                    this.transitionProgress += 0.02;
+                    if (this.transitionProgress >= 1) {
+                        this.currentMood = this.targetMood;
+                    }
+                }
+
+                const color = this.interpolateColor(this.transitionProgress);
+                const intensity = this.currentMood.intensity + (this.targetMood.intensity - this.currentMood.intensity) * this.transitionProgress;
+
+                // Background fade
+                this.ctx.fillStyle = 'rgba(5, 5, 5, 0.1)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-                this.particles.forEach(p => {
-                    const dx = this.attractor.x - p.x;
-                    const dy = this.attractor.y - p.y;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    
-                    const f = 1.5 / (dist + 80);
-                    p.vx += dx * f * this.speed;
-                    p.vy += dy * f * this.speed;
+                // Update and draw particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
 
-                    p.vx *= 0.96;
-                    p.vy *= 0.96;
-                    p.x += p.vx;
+                    // Update position
+                    p.wobble += p.wobbleSpeed;
+                    p.x += p.vx + Math.sin(p.wobble) * 0.3;
                     p.y += p.vy;
 
-                    // วนลูปขอบจอ
-                    if(p.x < 0) p.x = this.canvas.width;
-                    if(p.x > this.canvas.width) p.x = 0;
-                    if(p.y < 0) p.y = this.canvas.height;
-                    if(p.y > this.canvas.height) p.y = 0;
+                    // Reset particle if it goes off screen
+                    if (p.y < -50 || p.x < -50 || p.x > this.canvas.width + 50) {
+                        this.particles.splice(i, 1);
+                        this.createParticle();
+                        continue;
+                    }
 
-                    const alpha = Math.min(1, (Math.abs(p.vx) + Math.abs(p.vy)) * 0.3 + 0.1);
-                    this.ctx.fillStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${alpha})`;
+                    // Draw particle
+                    const alpha = p.alpha * intensity;
+                    this.ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
                     this.ctx.beginPath();
                     this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     this.ctx.fill();
 
-                    if (dist < 150) {
-                        this.ctx.strokeStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${0.05 * alpha})`;
-                        this.ctx.lineWidth = 0.5;
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(p.x, p.y);
-                        this.ctx.lineTo(this.attractor.x, this.attractor.y);
-                        this.ctx.stroke();
-                    }
-                });
+                    // Draw glow
+                    const gradient = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
+                    gradient.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha * 0.3})`);
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                // Add ambient glow at bottom
+                const bottomGlow = this.ctx.createRadialGradient(
+                    this.canvas.width / 2, this.canvas.height, 0,
+                    this.canvas.width / 2, this.canvas.height, this.canvas.height * 0.6
+                );
+                bottomGlow.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${intensity * 0.15})`);
+                bottomGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                this.ctx.fillStyle = bottomGlow;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
                 requestAnimationFrame(() => this.render());
             }
         }
 
-        const visualEngine = new GenesisVisualizer();
+        const visualEngine = new AuraVisualizer();
+        updateMoodUI('idle');
 
     </script>
 </body>
