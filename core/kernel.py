@@ -6,6 +6,6 @@ class Kernel:
         self.vault = WisdomVault()
 
     def process_input(self, user_input):
-        # ตรรกะการใช้เหตุผล (Reasoning) ของคุณเอง
+        # ตรรกะการใช้เหตุผล (Reasoning)
         context = self.vault.retrieve(user_input)
         return context
