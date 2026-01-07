@@ -1,71 +1,357 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>AI Chat with Reasoning (MVP)</title>
-<style>
-body { font-family: sans-serif; background:#111; color:#eee; margin:0; padding:0 }
-#chat { padding:20px; height:80vh; overflow:auto }
-#input { display:flex; padding:10px; background:#222 }
-input { flex:1; padding:10px; font-size:16px; background: #333; color: white; border: none; }
-button { padding:10px 20px; font-size:16px; cursor: pointer; background: #4caf50; color: white; border: none; }
-button:disabled { background: #555; }
-.msg { margin-bottom:10px; padding: 5px 10px; border-radius: 5px; }
-.ai { color:#6cf; background: #222; }
-.human { color:#fff; background: #333; text-align: right; }
-.reason { font-size:12px; color:#aaa; margin-left: 10px; }
-.error { color: #f44; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orolar AI - Genesis Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            filter: blur(1px) contrast(1.2);
+        }
+        /* UI Layer */
+        .ui-layer {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: radial-gradient(circle at center, transparent 0%, #050505 120%);
+        }
+        
+        /* Glass Panel */
+        .glass-panel {
+            background: rgba(15, 15, 15, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Chat Area */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scroll-behavior: smooth;
+        }
+        
+        /* Scrollbar */
+        #chat-container::-webkit-scrollbar { width: 6px; }
+        #chat-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        /* Messages */
+        .msg {
+            max-width: 80%;
+            margin-bottom: 16px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+            position: relative;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .msg.human {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #bfdbfe;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+        }
+        .msg.ai {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #d1fae5;
+            align-self: flex-start;
+            margin-right: auto;
+            border-bottom-left-radius: 2px;
+        }
+        .msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            text-align: center;
+            margin: 10px auto;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            padding-bottom: 30px;
+        }
+        
+        input:focus { outline: none; border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+        
+        .loading-dots:after {
+            content: ' .';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60% { content: ' ...'; } 80%, 100% { content: ''; } }
+    </style>
 </head>
 <body>
-<div id="chat"></div>
-<div id="input">
-<input id="text" placeholder="พิมพ์ถาม AI..." onkeydown="if(event.key==='Enter') send()" />
-<button onclick="send()" id="sendBtn">ส่ง</button>
-</div>
-<script>
-async function send(){
-  const t = document.getElementById('text');
-  const btn = document.getElementById('sendBtn');
-  const text = t.value;
-  if(!text) return;
 
-  add('human', text);
-  t.value='';
-  t.disabled = true;
-  btn.disabled = true;
+    <canvas id="neural-shader"></canvas>
 
-  try {
-    const response = await fetch("http://localhost:8000/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
-    });
+    <div class="ui-layer">
+        
+        <div class="glass-panel mx-4 mt-4 p-4 rounded-xl flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold text-white tracking-widest">OROLAR <span class="text-blue-400 font-light">AI</span></h1>
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider">Genesis Interface v1.0</div>
+            </div>
+            <div class="flex gap-4 text-xs font-mono">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+                    <span class="opacity-70">SYSTEM ONLINE</span>
+                </div>
+            </div>
+        </div>
 
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
+        <div id="chat-container" class="flex flex-col">
+            <div class="msg ai">
+                สวัสดีครับ ผมคือ Orolar AI ที่ทำงานบน Genesis Engine <br>
+                ระบบพร้อมทำงานแล้ว มีอะไรให้ผมช่วยไหมครับ?
+            </div>
+        </div>
 
-    const data = await response.json();
-    add('ai', data.reply);
+        <div class="input-area">
+            <div class="glass-panel rounded-full p-2 flex items-center gap-2 relative group">
+                <div class="absolute inset-0 bg-blue-500/10 rounded-full filter blur-lg opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                <input id="text" type="text" 
+                    class="bg-transparent border-none text-white w-full px-4 py-2 text-sm placeholder-gray-500 z-10"
+                    placeholder="ป้อนคำสั่งหรือคำถามที่นี่..." 
+                    autocomplete="off"
+                    onkeydown="if(event.key==='Enter') send()">
+                
+                <button onclick="send()" id="sendBtn" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full text-sm font-medium transition shadow-[0_0_15px_rgba(37,99,235,0.3)] z-10">
+                    ส่งข้อมูล
+                </button>
+            </div>
+            <div class="text-center mt-2 text-[10px] text-gray-600 font-mono">
+                POWERED BY OROLAR KERNEL &bull; AETHERIUM VISUALIZER
+            </div>
+        </div>
 
-  } catch (e) {
-    console.error(e);
-    add('error', 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + e.message);
-  } finally {
-    t.disabled = false;
-    btn.disabled = false;
-    t.focus();
-  }
-}
+    </div>
 
-function add(type,text){
-  const d=document.createElement('div');
-  d.className='msg '+type;
-  d.textContent=text;
-  document.getElementById('chat').appendChild(d);
-  document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
-}
-</script>
+    <script>
+        // --- 1. Chat Logic (Updated for Visual Integration) ---
+        const chatContainer = document.getElementById('chat-container');
+        const inputField = document.getElementById('text');
+        const sendBtn = document.getElementById('sendBtn');
+
+        async function send() {
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            // UI Updates
+            addMsg('human', text);
+            inputField.value = '';
+            inputField.disabled = true;
+            sendBtn.disabled = true;
+            
+            // Trigger Visual Engine (Simulate "Thinking")
+            engine.triggerEvent('thinking_start', { intensity: 1.0 });
+
+            try {
+                // Show temporary loading
+                const loadingId = addMsg('ai', 'Thinking', true);
+
+                const response = await fetch("http://localhost:8000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text })
+                });
+
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Remove loading and show real msg
+                removeMsg(loadingId);
+                addMsg('ai', data.reply);
+                
+                // Visual Success
+                engine.triggerEvent('response_received', { intensity: 0.8 });
+
+            } catch (e) {
+                console.error(e);
+                addMsg('error', 'Connection Error: ' + e.message);
+                engine.triggerEvent('error', { intensity: 1.0 });
+            } finally {
+                inputField.disabled = false;
+                sendBtn.disabled = false;
+                inputField.focus();
+            }
+        }
+
+        function addMsg(type, text, isLoading = false) {
+            const d = document.createElement('div');
+            d.className = 'msg ' + type + (isLoading ? ' loading-dots opacity-70' : '');
+            d.innerHTML = text.replace(/\n/g, '<br>');
+            d.id = 'msg-' + Date.now();
+            chatContainer.appendChild(d);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return d.id;
+        }
+
+        function removeMsg(id) {
+            const el = document.getElementById(id);
+            if(el) el.remove();
+        }
+
+        // --- 2. Visual Engine (Aetherium Genesis Adapted) ---
+        class AetheriumEngine {
+            constructor() {
+                this.canvas = document.getElementById('neural-shader');
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                
+                // State
+                this.particles = [];
+                this.attractor = { x: this.canvas.width/2, y: this.canvas.height/2 };
+                this.mode = 'idle'; // idle, thinking, error
+                this.energy = 0;
+                
+                this.initParticles();
+                window.addEventListener('resize', () => this.resize());
+                
+                // Mouse Interaction
+                window.addEventListener('mousemove', (e) => {
+                    this.attractor.x = e.clientX;
+                    this.attractor.y = e.clientY;
+                });
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            initParticles() {
+                const count = window.innerWidth < 768 ? 60 : 120; // Reduce on mobile
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: 0, vy: 0,
+                        size: Math.random() * 2 + 0.5,
+                        baseColor: [59, 130, 246] // Blue default
+                    });
+                }
+            }
+
+            triggerEvent(event, params) {
+                if (event === 'thinking_start') {
+                    this.mode = 'thinking';
+                    this.energy = 2.0;
+                } else if (event === 'response_received') {
+                    this.mode = 'idle';
+                    this.energy = 0.5; // Pulse
+                } else if (event === 'error') {
+                    this.mode = 'error';
+                    this.energy = 3.0; // Violent shake
+                }
+            }
+
+            render() {
+                // Clear with trail effect
+                this.ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Determine Physics based on mode
+                let speedMult = 1.0;
+                let chaos = 0.5;
+                let colorTarget = [59, 130, 246]; // Blue
+
+                if (this.mode === 'thinking') {
+                    speedMult = 3.0;
+                    chaos = 2.0;
+                    colorTarget = [147, 51, 234]; // Purple
+                } else if (this.mode === 'error') {
+                    speedMult = 5.0;
+                    chaos = 5.0;
+                    colorTarget = [239, 68, 68]; // Red
+                }
+
+                // Decay energy
+                this.energy *= 0.95;
+                if (this.mode === 'error' && this.energy < 0.1) this.mode = 'idle';
+
+                this.particles.forEach(p => {
+                    // Physics
+                    const dx = this.attractor.x - p.x;
+                    const dy = this.attractor.y - p.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    const force = 1.0 / (dist + 100);
+                    p.vx += dx * force * speedMult * 0.5;
+                    p.vy += dy * force * speedMult * 0.5;
+
+                    // Random drift
+                    p.vx += (Math.random() - 0.5) * chaos;
+                    p.vy += (Math.random() - 0.5) * chaos;
+
+                    // Friction
+                    p.vx *= 0.95;
+                    p.vy *= 0.95;
+
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    // Bounds
+                    if(p.x < 0) p.x = this.canvas.width;
+                    if(p.x > this.canvas.width) p.x = 0;
+                    if(p.y < 0) p.y = this.canvas.height;
+                    if(p.y > this.canvas.height) p.y = 0;
+
+                    // Color Mixing
+                    const r = colorTarget[0];
+                    const g = colorTarget[1];
+                    const b = colorTarget[2];
+
+                    // Draw
+                    const alpha = Math.min(1, (Math.abs(p.vx) + Math.abs(p.vy)) * 0.2 + 0.1);
+                    this.ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                    this.ctx.fill();
+
+                    // Connections
+                    if (dist < 150) {
+                        this.ctx.strokeStyle = `rgba(${r},${g},${b},${0.1 * alpha})`;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(p.x, p.y);
+                        this.ctx.lineTo(this.attractor.x, this.attractor.y);
+                        this.ctx.stroke();
+                    }
+                });
+
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        // Start Engine
+        const engine = new AetheriumEngine();
+        engine.render();
+
+    </script>
 </body>
 </html>
